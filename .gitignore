@@ -1,0 +1,21 @@
+# .gitignore for server
+/server/node_modules/
+server/dist/
+server/.env
+server/*.log
+server/tmp/
+server/.DS_Store
+server/.env.production
+/server/.env.development
+/server/.env.test
+/server/.env.staging
+
+# .gitignore for client
+/client/node_modules/
+client/build/
+client/dist/
+client/.env
+client/*.log
+client/.DS_Store
+client/tmp/
+client/.env.production

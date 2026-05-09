@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import ImagePreviewModal from '../components/ImagePreviewModal';
+import FilePreviewModal from '../components/ImagePreviewModal';
 import {
   Plus,
   Upload,
@@ -87,6 +87,7 @@ export default function Deposits() {
   // State
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [merchantAccounts, setMerchantAccounts] = useState<MerchantAccount[]>([]);
+  const [upgradeMerchantAccounts, setUpgradeMerchantAccounts] = useState<MerchantAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDepositForm, setShowDepositForm] = useState(false);
   const [showUpgradeForm, setShowUpgradeForm] = useState(false);
@@ -150,6 +151,16 @@ export default function Deposits() {
       setValidUpgradePackages([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUpgradeMerchantAccounts = async () => {
+    try {
+      const response = await axios.get('/deposits/merchant-accounts?forUpgrade=true');
+      setUpgradeMerchantAccounts(Array.isArray(response.data.merchantAccounts) ? response.data.merchantAccounts : []);
+    } catch (error) {
+      console.error('Failed to fetch upgrade merchant accounts:', error);
+      setUpgradeMerchantAccounts([]);
     }
   };
 
@@ -228,7 +239,7 @@ export default function Deposits() {
     setSubmitting(true);
     setError('');
     try {
-      const upgradeAmount = selectedTargetPackage.price - upgradeableDeposit.totalAmount;
+      const upgradeAmount = selectedTargetPackage.price;
       const formDataToSend = new FormData();
       formDataToSend.append('newPackage', selectedTargetPackage.name);
       formDataToSend.append('newAmount', upgradeAmount.toString());
@@ -289,7 +300,7 @@ export default function Deposits() {
     }
   };
   const selectedMerchantAccount = merchantAccounts.find(acc => acc._id === formData.merchantAccountId);
-  const selectedUpgradeMerchantAccount = merchantAccounts.find(acc => acc._id === upgradeFormData.merchantAccountId);
+  const selectedUpgradeMerchantAccount = upgradeMerchantAccounts.find(acc => acc._id === upgradeFormData.merchantAccountId);
 
   if (loading) {
     return (
@@ -326,7 +337,10 @@ export default function Deposits() {
             </button>
             {upgradeableDeposit && (
               <button
-                onClick={() => setShowUpgradeForm(true)}
+                onClick={() => {
+                  setShowUpgradeForm(true);
+                  fetchUpgradeMerchantAccounts();
+                }}
                 className="flex items-center px-6 py-3 space-x-2 font-medium text-white rounded-lg bg-gold-600 hover:bg-gold-700"
               >
                 <TrendingUp className="w-5 h-5" />
@@ -337,10 +351,10 @@ export default function Deposits() {
         </div>
 
         {/* ---------- Image Preview Modal ---------- */}
-        <ImagePreviewModal
+        <FilePreviewModal
           isOpen={imagePreview.isOpen}
           onClose={() => setImagePreview({ ...imagePreview, isOpen: false })}
-          imageUrl={imagePreview.imageUrl}
+          fileUrl={imagePreview.imageUrl}
           title={imagePreview.title}
           allowDownload
         />
@@ -529,6 +543,17 @@ export default function Deposits() {
                             </div>
                           </div>
                         ))}
+                      {merchantAccounts.filter(
+                        (acc) =>
+                          (formData.paymentMethod === "bank_transfer" &&
+                            acc.type === "bank") ||
+                          (formData.paymentMethod === "mobile_money" &&
+                            acc.type === "mobile_money")
+                      ).length === 0 && (
+                          <div className="p-4 col-span-full text-sm text-gray-600 rounded-lg bg-gray-50 border border-dashed border-gray-200">
+                            No payment accounts found for this method. Ask your referrer to add a merchant account or use admin accounts instead.
+                          </div>
+                        )}
                     </div>
                   </div>
                   {/* Payment Instructions */}
@@ -566,7 +591,7 @@ export default function Deposits() {
                     <div className="p-6 text-center border-2 border-gray-300 border-dashed rounded-lg">
                       <input
                         type="file"
-                        accept="image/png, image/jpeg, image/jpg, image/gif"
+                        accept="image/png, image/jpeg, image/jpg, image/gif, application/pdf"
                         onChange={handleReceiptChange}
                         className="hidden"
                         id="receipt-upload"
@@ -610,9 +635,12 @@ export default function Deposits() {
                     </button>
                     <button
                       type="submit"
-                      disabled={submitting || !formData.merchantAccountId ||
-                        !formData.transactionReference ||
-                        !receipt}
+                      disabled={
+                        submitting ||
+                        !formData.package ||
+                        !formData.amount ||
+                        !formData.merchantAccountId
+                      }
                       className="flex items-center justify-center flex-1 px-4 py-3 font-medium text-white rounded-lg bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {submitting ? (
@@ -772,9 +800,9 @@ export default function Deposits() {
                           </p>
                           <div className="mt-2 space-y-1 text-sm">
                             <p className="text-gray-600">
-                              Upgrade cost:{" "}
+                              Package Price:{" "}
                               <span className="font-semibold text-orange-600">
-                                {upgradeAmount.toLocaleString()} ETB
+                                {pkg.price.toLocaleString()} ETB
                               </span>
                             </p>
                           </div>
@@ -787,19 +815,18 @@ export default function Deposits() {
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div>
                       <label className="block mb-2 text-sm font-medium text-gray-700">
-                        Upgrade Amount (ETB)
+                        Package Price (ETB)
                       </label>
                       <input
                         type="number"
                         value={
                           selectedTargetPackage
-                            ? selectedTargetPackage.price -
-                            upgradeableDeposit.totalAmount
+                            ? selectedTargetPackage.price
                             : ""
                         }
                         readOnly
                         className="w-full py-3 pl-10 pr-3 bg-gray-100 border border-gray-300 rounded-lg"
-                        placeholder="Select package to see upgrade cost"
+                        placeholder="Select package to see package price"
                       />
                     </div>
                     <div>
@@ -849,7 +876,7 @@ export default function Deposits() {
                       Select Payment Account
                     </label>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {merchantAccounts
+                      {upgradeMerchantAccounts
                         .filter(
                           (acc) =>
                             (upgradeFormData.paymentMethod ===
@@ -923,6 +950,19 @@ export default function Deposits() {
                             </div>
                           </div>
                         ))}
+                      {merchantAccounts.filter(
+                        (acc) =>
+                          (upgradeFormData.paymentMethod ===
+                            "bank_transfer" &&
+                            acc.type === "bank") ||
+                          (upgradeFormData.paymentMethod ===
+                            "mobile_money" &&
+                            acc.type === "mobile_money")
+                      ).length === 0 && (
+                          <div className="p-4 col-span-full text-sm text-gray-600 rounded-lg bg-gray-50 border border-dashed border-gray-200">
+                            No payment accounts found for this method. Ask your referrer to add a merchant account or use admin accounts instead.
+                          </div>
+                        )}
                     </div>
                   </div>
                   {selectedUpgradeMerchantAccount && (
@@ -959,7 +999,7 @@ export default function Deposits() {
                     <div className="p-6 text-center border-2 border-gray-300 border-dashed rounded-lg">
                       <input
                         type="file"
-                        accept="image/png, image/jpeg, image/jpg, image/gif"
+                        accept="image/png, image/jpeg, image/jpg, image/gif, application/pdf"
                         onChange={handleUpgradeReceiptChange}
                         className="hidden"
                         id="upgrade-receipt-upload"

@@ -10,7 +10,8 @@ export default function Register() {
     phoneNumber: '',
     password: '',
     confirmPassword: '',
-    referralCode: ''
+    referralCode: '',
+    paymentMethods: [] as any[]
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -50,7 +51,8 @@ export default function Register() {
         email: formData.email,
         phoneNumber: formData.phoneNumber,
         password: formData.password,
-        referralCode: formData.referralCode || undefined
+        referralCode: formData.referralCode || undefined,
+        paymentMethods: formData.paymentMethods
       });
       navigate('/dashboard');
     } catch (err: any) {
@@ -168,6 +170,141 @@ export default function Register() {
                   value={formData.referralCode}
                   onChange={handleChange}
                 />
+              </div>
+            </div>
+
+            {/* Payment Methods Section */}
+            <div className="border-t pt-5">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Methods (Optional)</h3>
+              <p className="text-sm text-gray-600 mb-4">Add your payment details for referrals to deposit to you.</p>
+
+              {/* Bank Transfer */}
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Bank Transfer</h4>
+                <div className="grid grid-cols-1 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Bank Name"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData(prev => {
+                        const existing = prev.paymentMethods.find(m => m.type === 'bank');
+                        if (existing) {
+                          existing.bankName = value;
+                        } else if (value) {
+                          prev.paymentMethods.push({
+                            type: 'bank',
+                            name: 'Bank Transfer',
+                            bankName: value,
+                            accountNumber: '',
+                            accountName: ''
+                          });
+                        }
+                        return { ...prev };
+                      });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Account Number"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData(prev => {
+                        const existing = prev.paymentMethods.find(m => m.type === 'bank');
+                        if (existing) {
+                          existing.accountNumber = value;
+                        } else if (value) {
+                          prev.paymentMethods.push({
+                            type: 'bank',
+                            name: 'Bank Transfer',
+                            bankName: '',
+                            accountNumber: value,
+                            accountName: ''
+                          });
+                        }
+                        return { ...prev };
+                      });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Account Holder Name"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData(prev => {
+                        const existing = prev.paymentMethods.find(m => m.type === 'bank');
+                        if (existing) {
+                          existing.accountName = value;
+                        } else if (value) {
+                          prev.paymentMethods.push({
+                            type: 'bank',
+                            name: 'Bank Transfer',
+                            bankName: '',
+                            accountNumber: '',
+                            accountName: value
+                          });
+                        }
+                        return { ...prev };
+                      });
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Mobile Money */}
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Mobile Money (Telebirr)</h4>
+                <div className="grid grid-cols-1 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Tele Username"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData(prev => {
+                        const existing = prev.paymentMethods.find(m => m.type === 'mobile_money');
+                        if (existing) {
+                          existing.accountName = value; // Using accountName for tele username
+                        } else if (value) {
+                          prev.paymentMethods.push({
+                            type: 'mobile_money',
+                            name: 'Telebirr',
+                            accountName: value,
+                            phoneNumber: '',
+                            accountNumber: value // Using accountNumber for consistency
+                          });
+                        }
+                        return { ...prev };
+                      });
+                    }}
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Phone Number"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData(prev => {
+                        const existing = prev.paymentMethods.find(m => m.type === 'mobile_money');
+                        if (existing) {
+                          existing.phoneNumber = value;
+                        } else if (value) {
+                          prev.paymentMethods.push({
+                            type: 'mobile_money',
+                            name: 'Telebirr',
+                            accountName: '',
+                            phoneNumber: value,
+                            accountNumber: ''
+                          });
+                        }
+                        return { ...prev };
+                      });
+                    }}
+                  />
+                </div>
               </div>
             </div>
 

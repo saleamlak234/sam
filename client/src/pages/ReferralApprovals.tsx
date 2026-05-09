@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import ImagePreviewModal from '../components/ImagePreviewModal';
+import FilePreviewModal from '../components/ImagePreviewModal';
 import {
   CheckCircle,
   XCircle,
@@ -238,10 +238,10 @@ export default function ReferralApprovals() {
         </div>
       )}
 
-      <ImagePreviewModal
+      <FilePreviewModal
         isOpen={showImageModal}
         onClose={() => setShowImageModal(false)}
-        imageUrl={selectedImage}
+        fileUrl={selectedImage}
         title="Payment Receipt"
         allowDownload={true}
       />

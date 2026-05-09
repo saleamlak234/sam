@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ImagePreviewModal from '../../components/ImagePreviewModal';
+import FilePreviewModal from '../../components/ImagePreviewModal';
 
 import {
   DollarSign,
@@ -405,10 +405,10 @@ export default function AdminTransactions() {
         </div>
 
         {/* Image Preview Modal */}
-        <ImagePreviewModal
+        <FilePreviewModal
           isOpen={imagePreview.isOpen}
           onClose={() => setImagePreview(prev => ({ ...prev, isOpen: false }))}
-          imageUrl={imagePreview.imageUrl}
+          fileUrl={imagePreview.imageUrl}
           title={imagePreview.title}
           allowDownload={true}
         />

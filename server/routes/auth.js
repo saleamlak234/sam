@@ -19,7 +19,14 @@ const generateToken = (userId) => {
 // Register
 router.post("/register", async (req, res) => {
   try {
-    const { fullName, email, phoneNumber, password, referralCode } = req.body;
+    const {
+      fullName,
+      email,
+      phoneNumber,
+      password,
+      referralCode,
+      paymentMethods,
+    } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -59,6 +66,24 @@ router.post("/register", async (req, res) => {
     });
 
     await user.save();
+
+    // Create merchant accounts if provided
+    if (paymentMethods && Array.isArray(paymentMethods)) {
+      const MerchantAccount = require("../models/MerchantAccount");
+      for (const method of paymentMethods) {
+        const account = new MerchantAccount({
+          user: user._id,
+          name: method.name,
+          type: method.type,
+          accountNumber: method.accountNumber,
+          accountName: method.accountName,
+          bankName: method.bankName,
+          phoneNumber: method.phoneNumber,
+          instructions: method.instructions || "",
+        });
+        await account.save();
+      }
+    }
 
     // Update referrer's direct referrals count
     if (referrer) {

@@ -1,21 +1,21 @@
 import React from 'react';
 import { X, Download, Eye } from 'lucide-react';
 
-interface ImagePreviewModalProps {
+interface FilePreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  imageUrl: string;
+  fileUrl: string;
   title?: string;
   allowDownload?: boolean;
 }
 
-export default function ImagePreviewModal({
+export default function FilePreviewModal({
   isOpen,
   onClose,
-  imageUrl,
-  title = "Image Preview",
+  fileUrl,
+  title = "File Preview",
   allowDownload = false
-}: ImagePreviewModalProps) {
+}: FilePreviewModalProps) {
   if (!isOpen) return null;
 
   // const handleDownload = () => {
@@ -28,14 +28,10 @@ export default function ImagePreviewModal({
   // };
 
   const downloadFile = async () => {
-    // const originalRelativeUrl = imageUrl;;
-
-    // const fullImageUrl = 'http://31.97.125.62:5000' + originalRelativeUrl;
-
-    const fileName = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
+    const fileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
 
     try {
-      const response = await fetch(imageUrl);
+      const response = await fetch(fileUrl);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -57,7 +53,7 @@ export default function ImagePreviewModal({
 
     } catch (err) {
       console.error('Download error:', err);
-      alert(`Failed to download image: ${err.message}`);
+      alert(`Failed to download file: ${err.message}`);
     }
   }
 
@@ -67,8 +63,9 @@ export default function ImagePreviewModal({
       onClose();
     }
   };
-  
-  const previewUrl = imageUrl.replace("http://31.97.125.62:5000/","http://www.sahamtradingplc.com/")
+
+  const previewUrl = fileUrl.replace("http://31.97.125.62:5000/", "http://www.sahamtradingplc.com/")
+  const isPdf = fileUrl.toLowerCase().endsWith('.pdf');
 
   return (
     <div
@@ -87,7 +84,7 @@ export default function ImagePreviewModal({
               <button
                 onClick={downloadFile}
                 className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Download Image"
+                title="Download File"
               >
                 <Download className="h-5 w-5" />
               </button>
@@ -102,20 +99,29 @@ export default function ImagePreviewModal({
           </div>
         </div>
 
-        {/* Image Container */}
+        {/* File Container */}
         <div className="p-4 max-h-[80vh] overflow-auto">
           <div className="flex justify-center">
-            <img
-              src={previewUrl}
-              alt="Receipt Preview"
-              className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = '/placeholder-image.png';
-                target.alt = 'Image not found';
-              }}
-            /> 
-
+            {isPdf ? (
+              <iframe
+                src={fileUrl}
+                width="100%"
+                height="600px"
+                className="rounded-lg shadow-lg border-0"
+                title="PDF Preview"
+              />
+            ) : (
+              <img
+                src={previewUrl}
+                alt="Receipt Preview"
+                className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder-image.png';
+                  target.alt = 'Image not found';
+                }}
+              />
+            )}
           </div>
         </div>
 
@@ -123,7 +129,7 @@ export default function ImagePreviewModal({
         <div className="p-4 border-t border-gray-200 bg-gray-50">
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-600">
-              Click outside the image or press the X button to close
+              Click outside the file or press the X button to close
             </p>
             <div className="flex space-x-2">
               {allowDownload && (

@@ -37,6 +37,7 @@ interface RegisterData {
   phoneNumber: string;
   password: string;
   referralCode?: string;
+  paymentMethods?: any[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,7 +52,7 @@ if (env.IS_DEVELOPMENT) {
   console.log('🔧 Environment Configuration:', {
     API_BASE_URL: env.API_BASE_URL,
     ENVIRONMENT: env.ENVIRONMENT,
-    DOMAIN: env.DOMAIN, 
+    DOMAIN: env.DOMAIN,
     APP_VERSION: env.APP_VERSION
   });
 }

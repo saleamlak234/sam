@@ -43,7 +43,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif/;
+    const allowedTypes = /jpeg|jpg|png|gif|pdf/;
     const extname = allowedTypes.test(
       path.extname(file.originalname).toLowerCase(),
     );
@@ -51,7 +51,11 @@ const upload = multer({
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error("Only image files are allowed"));
+      cb(
+        new Error(
+          "Only image files (JPEG, JPG, PNG, GIF) and PDF files are allowed",
+        ),
+      );
     }
   },
 });
@@ -59,7 +63,41 @@ const upload = multer({
 // GET merchant accounts
 router.get("/merchant-accounts", async (req, res) => {
   try {
-    const merchantAccounts = await MerchantAccount.find({ isActive: true });
+    const { forUpgrade } = req.query;
+    const user = await User.findById(req.user._id).populate("referredBy");
+    let merchantAccounts = [];
+
+    // For upgrades, always show admin accounts
+    if (forUpgrade === "true") {
+      const adminUsers = await User.find({
+        role: { $in: ["admin", "transaction_admin", "super_admin"] },
+      }).select("_id");
+      const adminIds = adminUsers.map((admin) => admin._id);
+      merchantAccounts = await MerchantAccount.find({
+        user: { $in: adminIds },
+        isActive: true,
+      });
+    } else {
+      // For initial deposits, try referrer first, then admin fallback
+      if (user && user.referredBy) {
+        merchantAccounts = await MerchantAccount.find({
+          user: user.referredBy._id,
+          isActive: true,
+        });
+      }
+
+      if (!merchantAccounts.length) {
+        const adminUsers = await User.find({
+          role: { $in: ["admin", "transaction_admin", "super_admin"] },
+        }).select("_id");
+        const adminIds = adminUsers.map((admin) => admin._id);
+        merchantAccounts = await MerchantAccount.find({
+          user: { $in: adminIds },
+          isActive: true,
+        });
+      }
+    }
+
     res.json({ merchantAccounts });
   } catch (error) {
     console.error("Get merchant accounts error:", error);
@@ -220,13 +258,14 @@ router.post(
         });
       }
 
-      // Upgrade cost is difference between new and current
-      const requiredUpgradeAmount = newPkgPrice - currentTotal;
-      if (parseInt(newAmount) !== requiredUpgradeAmount) {
+      // Validate newAmount is the full new package price
+      if (parseInt(newAmount) !== newPkgPrice) {
         return res.status(400).json({
-          message: `Upgrade amount must be exactly ${requiredUpgradeAmount} ETB for this upgrade.`,
+          message: `Upgrade amount must be exactly ${newPkgPrice} ETB for this package.`,
         });
       }
+
+      const requiredUpgradeAmount = newPkgPrice - currentTotal;
 
       // Validate merchant account
       const merchantAccount = await MerchantAccount.findById(merchantAccountId);
@@ -239,7 +278,7 @@ router.post(
       // Create new "upgrade" deposit, chaining from latestDeposit
       const upgradeDeposit = new Deposit({
         user: userId,
-        amount: parseInt(newAmount),
+        amount: newPkgPrice,
         totalAmount: newPkgPrice,
         package: newPackage,
         paymentMethod,
@@ -263,7 +302,7 @@ router.post(
           `User: ${req.user.fullName}\n` +
           `Original: ${latestDeposit.package} (${currentTotal.toLocaleString()} ETB)\n` +
           `Upgrade to: ${newPackage} (${newPkgPrice.toLocaleString()} ETB)\n` +
-          `Upgrade amount: ${requiredUpgradeAmount.toLocaleString()} ETB\n` +
+          `Package price: ${newPkgPrice.toLocaleString()} ETB\n` +
           `Payment: ${paymentMethod}\n` +
           `Reference: ${transactionReference || "N/A"}`,
       );
@@ -271,7 +310,7 @@ router.post(
         message: "Package upgrade request submitted successfully",
         upgradeDeposit,
         previousDeposit: latestDeposit,
-        upgradeAmount: requiredUpgradeAmount,
+        packagePrice: newPkgPrice,
       });
     } catch (error) {
       console.error("Upgrade deposit error:", error);

@@ -2,6 +2,7 @@ const express = require("express");
 const User = require("../models/User");
 const Deposit = require("../models/Deposit");
 const Commission = require("../models/Commission");
+const MerchantAccount = require("../models/MerchantAccount");
 const telegramService = require("../services/telegram");
 
 const router = express.Router();
@@ -51,6 +52,105 @@ router.post("/link-telegram", async (req, res) => {
   } catch (error) {
     console.error("Link Telegram error:", error);
     res.status(500).json({ message: "Server error linking Telegram account" });
+  }
+});
+
+// Get user's merchant accounts
+router.get("/merchant-accounts", async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const merchantAccounts = await MerchantAccount.find({
+      user: userId,
+      isActive: true,
+    });
+    res.json({ merchantAccounts });
+  } catch (error) {
+    console.error("Get merchant accounts error:", error);
+    res
+      .status(500)
+      .json({ message: "Server error fetching merchant accounts" });
+  }
+});
+
+// Add merchant account
+router.post("/merchant-accounts", async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const {
+      name,
+      type,
+      accountNumber,
+      accountName,
+      bankName,
+      phoneNumber,
+      instructions,
+    } = req.body;
+
+    const account = new MerchantAccount({
+      user: userId,
+      name,
+      type,
+      accountNumber,
+      accountName,
+      bankName: type === "bank" ? bankName : undefined,
+      phoneNumber: type === "mobile_money" ? phoneNumber : undefined,
+      instructions: instructions || "",
+    });
+
+    await account.save();
+    res
+      .status(201)
+      .json({ message: "Merchant account added successfully", account });
+  } catch (error) {
+    console.error("Add merchant account error:", error);
+    res.status(500).json({ message: "Server error adding merchant account" });
+  }
+});
+
+// Update merchant account
+router.put("/merchant-accounts/:id", async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { id } = req.params;
+    const updates = req.body;
+
+    const account = await MerchantAccount.findOneAndUpdate(
+      { _id: id, user: userId },
+      updates,
+      { new: true },
+    );
+
+    if (!account) {
+      return res.status(404).json({ message: "Merchant account not found" });
+    }
+
+    res.json({ message: "Merchant account updated successfully", account });
+  } catch (error) {
+    console.error("Update merchant account error:", error);
+    res.status(500).json({ message: "Server error updating merchant account" });
+  }
+});
+
+// Delete merchant account
+router.delete("/merchant-accounts/:id", async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { id } = req.params;
+
+    const account = await MerchantAccount.findOneAndUpdate(
+      { _id: id, user: userId },
+      { isActive: false },
+      { new: true },
+    );
+
+    if (!account) {
+      return res.status(404).json({ message: "Merchant account not found" });
+    }
+
+    res.json({ message: "Merchant account deleted successfully" });
+  } catch (error) {
+    console.error("Delete merchant account error:", error);
+    res.status(500).json({ message: "Server error deleting merchant account" });
   }
 });
 

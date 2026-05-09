@@ -324,6 +324,12 @@ router.put(
           await transaction.save();
           await processDepositApproval(transaction);
         } else if (
+          transaction.user._id.toString() === req.user._id.toString()
+        ) {
+          // Admin can approve their own deposits
+          await transaction.save();
+          await processDepositApproval(transaction);
+        } else if (
           transaction.user.referredBy &&
           transaction.user.referredBy.toString() === req.user._id.toString()
         ) {
@@ -333,7 +339,7 @@ router.put(
         } else {
           return res.status(400).json({
             message:
-              "Initial deposits must be approved by the user's direct referrer.",
+              "Initial deposits must be approved by the user's direct referrer or the user themselves if they are an admin.",
           });
         }
       } else if (!isDeposit) {
@@ -530,14 +536,14 @@ async function processDepositCommissions(deposit) {
     if (deposit.upgradedFrom) {
       if (!adminUser) return;
 
-      const commissionAmount = deposit.amount;
+      const commissionAmount = deposit.totalAmount;
       const commission = new Commission({
         user: adminUser._id,
         fromUser: deposit.user,
-        amount: commissionAmount,
+        // amount: commissionAmount,
         level: 0,
         type: "deposit",
-        description: `Admin commission from upgrade deposit for ${user.fullName}`,
+        description: `Admin revenue from upgrade deposit for ${user.fullName}`,
         sourceTransaction: deposit._id,
         sourceModel: "Deposit",
       });
@@ -545,21 +551,21 @@ async function processDepositCommissions(deposit) {
       await commission.save();
       await User.findByIdAndUpdate(adminUser._id, {
         $inc: {
-          balance: commissionAmount,
-          totalCommissions: commissionAmount,
+          // balance: commissionAmount,
+          totalDeposits: commissionAmount,
         },
       });
 
       if (adminUser.telegramChatId) {
         await telegramService.sendMessage(
           adminUser.telegramChatId,
-          `💰 Upgrade deposit approved. Admin received ${commissionAmount.toLocaleString()} ETB from ${user.fullName}.`,
+          `💰 Upgrade deposit approved. Admin recorded ${commissionAmount.toLocaleString()} ETB as total deposit revenue from ${user.fullName}.`,
         );
       }
       return;
     }
 
-    // Initial deposits: distribute commissions to entire referral chain: 8% parent, 6% grandparent, 4% great-grandparent
+    // Initial deposits: distribute commissions to referral chain, but each user only gets commissions from their first 3 direct children
     if (user.referredBy) {
       let currentUser = user;
       const commissionRates = [0.08, 0.06, 0.04]; // 8%, 6%, 4%
@@ -567,35 +573,69 @@ async function processDepositCommissions(deposit) {
 
       while (currentUser && currentUser.referredBy && level <= 3) {
         const referrer = await User.findById(currentUser.referredBy._id);
-        const commissionAmount = deposit.amount * commissionRates[level - 1];
+
+        // Check if this user is within the first 3 children of the referrer
+        const allChildren = await User.find({ referredBy: referrer._id }).sort({
+          createdAt: 1,
+        });
+        const childIndex = allChildren.findIndex(
+          (child) => child._id.toString() === currentUser._id.toString(),
+        );
+
+        let commissionRecipient = referrer;
+        let recipientDescription = `${level === 1 ? "direct child" : level === 2 ? "grandchild" : "great-grandchild"}`;
+
+        // If this is the 4th or later child, give full deposit to admin instead
+        if (childIndex >= 3) {
+          commissionRecipient = adminUser;
+          recipientDescription = `4th+ ${level === 1 ? "direct child" : level === 2 ? "grandchild" : "great-grandchild"} (admin commission)`;
+        }
+
+        let commissionAmount = 0;
+
+        // For 4th+ children, admin gets full deposit; otherwise get commission percentage
+        if (childIndex >= 3) {
+          commissionAmount = deposit.amount;
+        } else {
+          commissionAmount = deposit.amount * commissionRates[level - 1];
+        }
 
         if (commissionAmount > 0) {
           const commission = new Commission({
-            user: referrer._id,
+            user: commissionRecipient._id,
             fromUser: deposit.user._id,
             amount: commissionAmount,
             level: level,
             type: "deposit",
-            description: `Commission for ${level === 1 ? "direct child" : level === 2 ? "grandchild" : "great-grandchild"} deposit approval`,
+            description: `Commission for ${recipientDescription} deposit approval`,
             sourceTransaction: deposit._id,
             sourceModel: "Deposit",
           });
 
           await commission.save();
 
-          await User.findByIdAndUpdate(referrer._id, {
+          await User.findByIdAndUpdate(commissionRecipient._id, {
             $inc: {
               balance: commissionAmount,
               totalCommissions: commissionAmount,
             },
           });
 
-          if (referrer.telegramChatId) {
+          // Send notification to the recipient (referrer or admin)
+          const recipientForNotification = commissionRecipient;
+          if (recipientForNotification.telegramChatId) {
+            const notificationMessage =
+              childIndex >= 3
+                ? `💰 Admin commission earned!\n` +
+                  `Amount: ${commissionAmount.toLocaleString()} ETB (${(commissionRates[level - 1] * 100).toFixed(0)}%)\n` +
+                  `From ${user.fullName}'s deposit (4th+ child commission)`
+                : `💰 Commission earned!\n` +
+                  `Amount: ${commissionAmount.toLocaleString()} ETB (${(commissionRates[level - 1] * 100).toFixed(0)}%)\n` +
+                  `From ${user.fullName}'s deposit`;
+
             await telegramService.sendMessage(
-              referrer.telegramChatId,
-              `💰 Commission earned!\n` +
-                `Amount: ${commissionAmount.toLocaleString()} ETB (${(commissionRates[level - 1] * 100).toFixed(0)}%)\n` +
-                `From ${user.fullName}'s deposit`,
+              recipientForNotification.telegramChatId,
+              notificationMessage,
             );
           }
         }

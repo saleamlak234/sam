@@ -6,6 +6,7 @@ interface Video {
     title: string;
     description: string;
     videoUrl: string;
+    thumbnailUrl?: string;
     duration: number;
     rewardAmount: number;
 }
@@ -86,6 +87,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, onWatchComplete }) => 
             <video
                 ref={videoRef}
                 src={video.videoUrl}
+                poster={video.thumbnailUrl}
+                preload="metadata"
                 className="w-full h-auto"
                 controls={!hasWatchedToday}
                 onTimeUpdate={handleTimeUpdate}

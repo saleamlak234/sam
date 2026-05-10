@@ -1,6 +1,8 @@
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
+const ffmpeg = require("fluent-ffmpeg");
 const Video = require("../models/Video");
 const VideoWatch = require("../models/VideoWatch");
 const User = require("../models/User");
@@ -19,6 +21,17 @@ const storage = multer.diskStorage({
   },
 });
 
+const THUMBNAIL_DIR = path.join(
+  __dirname,
+  "..",
+  "uploads",
+  "videos",
+  "thumbnails",
+);
+if (!fs.existsSync(THUMBNAIL_DIR)) {
+  fs.mkdirSync(THUMBNAIL_DIR, { recursive: true });
+}
+
 const upload = multer({
   storage,
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
@@ -36,6 +49,21 @@ const upload = multer({
     }
   },
 });
+
+const generateThumbnail = (videoPath, filename) => {
+  const thumbnailName = `${path.basename(filename, path.extname(filename))}.png`;
+  return new Promise((resolve, reject) => {
+    ffmpeg(videoPath)
+      .screenshots({
+        timestamps: ["10%"],
+        filename: thumbnailName,
+        folder: THUMBNAIL_DIR,
+        size: "640x360",
+      })
+      .on("end", () => resolve(`/uploads/videos/thumbnails/${thumbnailName}`))
+      .on("error", (err) => reject(err));
+  });
+};
 
 // Admin middleware
 const checkAdminPermission = (requiredRole) => {
@@ -90,6 +118,18 @@ router.post(
       });
 
       await video.save();
+
+      try {
+        const thumbnailUrl = await generateThumbnail(
+          req.file.path,
+          req.file.filename,
+        );
+        video.thumbnailUrl = thumbnailUrl;
+        await video.save();
+      } catch (thumbnailError) {
+        console.error("Thumbnail generation error:", thumbnailError);
+      }
+
       res.status(201).json({ message: "Video uploaded successfully", video });
     } catch (error) {
       console.error("Upload video error:", error);

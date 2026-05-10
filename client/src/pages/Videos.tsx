@@ -9,6 +9,7 @@ interface Video {
     title: string;
     description: string;
     videoUrl: string;
+    thumbnailUrl?: string;
     duration: number;
     rewardAmount: number;
     totalViews: number;
@@ -80,7 +81,8 @@ const Videos: React.FC = () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return watchHistory.some(watch =>
-            watch.video._id === videoId &&
+            watch?.video?._id === videoId &&
+            watch.watchedAt &&
             new Date(watch.watchedAt) >= today &&
             watch.rewardGiven
         );
@@ -172,7 +174,16 @@ const Videos: React.FC = () => {
                                 className="overflow-hidden bg-white border border-gray-200 shadow-sm rounded-xl hover:shadow-md transition-shadow"
                             >
                                 {/* Video Thumbnail/Preview */}
-                                <div className="relative bg-gray-900 aspect-video">
+                                <div className="relative bg-gray-900 aspect-video overflow-hidden">
+                                    {video.thumbnailUrl ? (
+                                        <img
+                                            src={video.thumbnailUrl}
+                                            alt={video.title}
+                                            className="object-cover w-full h-full"
+                                        />
+                                    ) : (
+                                        <div className="absolute inset-0 bg-gray-900" />
+                                    )}
                                     <div className="absolute inset-0 flex items-center justify-center">
                                         <button
                                             onClick={() => setSelectedVideo(video)}

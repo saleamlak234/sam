@@ -15,6 +15,7 @@ const createUploadDirs = () => {
     path.join(__dirname, "uploads", "documents"),
     path.join(__dirname, "uploads", "avatars"),
     path.join(__dirname, "uploads", "videos"),
+    path.join(__dirname, "uploads", "videos", "thumbnails"),
   ];
 
   uploadDirs.forEach((dir) => {
@@ -87,10 +88,37 @@ if (!fs.existsSync(receiptsDir)) {
   fs.mkdirSync(receiptsDir, { recursive: true });
 }
 // Serve static files
-app.use("/uploads", express.static(uploadsDir));
+app.use(
+  "/uploads",
+  express.static(uploadsDir, {
+    setHeaders: (res, path) => {
+      res.set("Access-Control-Allow-Origin", "*");
+      res.set(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      );
+      res.set(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS",
+      );
+    },
+  }),
+);
 app.use(
   "/uploads/videos",
-  express.static(path.join(__dirname, "uploads", "videos")),
+  express.static(path.join(__dirname, "uploads", "videos"), {
+    setHeaders: (res, path) => {
+      res.set("Access-Control-Allow-Origin", "*");
+      res.set(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      );
+      res.set(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS",
+      );
+    },
+  }),
 );
 
 // Database connection
@@ -110,6 +138,19 @@ app.use("/api/dashboard", authMiddleware, dashboardRoutes);
 app.use("/api/vip", authMiddleware, vipRoutes);
 app.use("/api/admin", authMiddleware, adminRoutes);
 
+const buildUrl = (req, url) => {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  const fullUrl = `${req.protocol}://${req.get("host")}${url}`;
+  console.log("Building URL:", {
+    original: url,
+    protocol: req.protocol,
+    host: req.get("host"),
+    full: fullUrl,
+  });
+  return fullUrl;
+};
+
 // Public video routes (no auth required)
 app.get("/api/videos/active", async (req, res) => {
   try {
@@ -118,8 +159,16 @@ app.get("/api/videos/active", async (req, res) => {
       .select(
         "title description videoUrl thumbnailUrl duration rewardAmount totalViews",
       )
-      .sort({ createdAt: -1 });
-    res.json({ videos });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const mappedVideos = videos.map((video) => ({
+      ...video,
+      videoUrl: buildUrl(req, video.videoUrl),
+      thumbnailUrl: buildUrl(req, video.thumbnailUrl),
+    }));
+
+    res.json({ videos: mappedVideos });
   } catch (error) {
     console.error("Get active videos error:", error);
     res.status(500).json({ message: "Server error fetching videos" });

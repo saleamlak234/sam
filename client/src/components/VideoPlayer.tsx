@@ -30,7 +30,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, onWatchComplete }) => 
 
     const startWatchTracking = async () => {
         try {
-            const response = await axios.post(`/videos/${video._id}/watch`);
+            const response = await axios.post(`/api/videos/${video._id}/watch`);
             if (response.data.watch) {
                 setWatchId(response.data.watch._id);
                 if (response.data.message === "Already watched today") {
@@ -49,7 +49,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, onWatchComplete }) => 
         setCurrentTime(currentTime);
 
         try {
-            await axios.put(`/videos/${video._id}/watch/${watchId}`, {
+            await axios.put(`/api/videos/${video._id}/watch/${watchId}`, {
                 watchDuration: Math.floor(currentTime),
                 completed: currentTime >= video.duration * 0.9, // 90% watched
             });
@@ -62,7 +62,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, onWatchComplete }) => 
         if (!watchId || hasWatchedToday) return;
 
         try {
-            await axios.put(`/videos/${video._id}/watch/${watchId}`, {
+            await axios.put(`/api/videos/${video._id}/watch/${watchId}`, {
                 watchDuration: video.duration,
                 completed: true,
             });

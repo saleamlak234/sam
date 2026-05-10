@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import VideoSlider from '../components/VideoSlider';
 import {
   DollarSign,
   TrendingUp,
@@ -313,6 +314,9 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+
+        
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Referral Section */}

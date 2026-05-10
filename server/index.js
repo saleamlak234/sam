@@ -14,6 +14,7 @@ const createUploadDirs = () => {
     path.join(__dirname, "uploads", "receipts"),
     path.join(__dirname, "uploads", "documents"),
     path.join(__dirname, "uploads", "avatars"),
+    path.join(__dirname, "uploads", "videos"),
   ];
 
   uploadDirs.forEach((dir) => {
@@ -37,6 +38,7 @@ const mlmRoutes = require("./routes/mlm");
 const dashboardRoutes = require("./routes/dashboard");
 const adminRoutes = require("./routes/admin");
 const vipRoutes = require("./routes/vip");
+const videoRoutes = require("./routes/videos");
 
 // Import middleware
 const authMiddleware = require("./middleware/auth");
@@ -46,6 +48,7 @@ const adminMiddleware = require("./middleware/admin");
 require("./jobs/monthlyEarnings");
 require("./jobs/vipBonuses");
 require("./jobs/dailyReturns");
+require("./jobs/dailyVideoReset");
 
 // Load environment variables
 dotenv.config();
@@ -67,7 +70,7 @@ app.use(
     optionsSuccessStatus: 200,
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  })
+  }),
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -85,6 +88,10 @@ if (!fs.existsSync(receiptsDir)) {
 }
 // Serve static files
 app.use("/uploads", express.static(uploadsDir));
+app.use(
+  "/uploads/videos",
+  express.static(path.join(__dirname, "uploads", "videos")),
+);
 
 // Database connection
 mongoose
@@ -102,6 +109,24 @@ app.use("/api/mlm", authMiddleware, mlmRoutes);
 app.use("/api/dashboard", authMiddleware, dashboardRoutes);
 app.use("/api/vip", authMiddleware, vipRoutes);
 app.use("/api/admin", authMiddleware, adminRoutes);
+
+// Public video routes (no auth required)
+app.get("/api/videos/active", async (req, res) => {
+  try {
+    const Video = require("./models/Video");
+    const videos = await Video.find({ isActive: true })
+      .select(
+        "title description videoUrl thumbnailUrl duration rewardAmount totalViews",
+      )
+      .sort({ createdAt: -1 });
+    res.json({ videos });
+  } catch (error) {
+    console.error("Get active videos error:", error);
+    res.status(500).json({ message: "Server error fetching videos" });
+  }
+});
+
+app.use("/api/videos", authMiddleware, videoRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

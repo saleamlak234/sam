@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { env } from '../config/env';
+import axios from 'axios';
 import {
   TrendingUp,
   User,
@@ -17,7 +18,8 @@ import {
   Crown,
   Trophy,
   Zap,
-  CheckCircle
+  CheckCircle,
+  Video
 } from 'lucide-react';
 import PackageSlider from './PackageSlider';
 
@@ -26,6 +28,22 @@ export default function Header() {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [videoRewards, setVideoRewards] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      fetchVideoRewards();
+    }
+  }, [user]);
+
+  const fetchVideoRewards = async () => {
+    try {
+      const response = await axios.get('/videos/rewards/today');
+      setVideoRewards(response.data.todayRewards || 0);
+    } catch (error) {
+      console.error('Error fetching video rewards:', error);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -77,6 +95,10 @@ export default function Header() {
                 </Link>
                 <Link to="/commissions" className="text-gray-700 transition-colors hover:text-primary-600">
                   Commissions
+                </Link>
+                <Link to="/videos" className="flex items-center space-x-1 text-gray-700 transition-colors hover:text-primary-600">
+                  <Video className="w-4 h-4" />
+                  <span>Videos</span>
                 </Link>
                 <Link to="/mlm-tree" className="text-gray-700 transition-colors hover:text-primary-600">
                   MLM Tree
@@ -138,6 +160,14 @@ export default function Header() {
                           {user.balance.toLocaleString()} ETB
                         </span>
                       </div>
+                      {videoRewards > 0 && (
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs text-gray-500">Video Rewards:</span>
+                          <span className="text-sm font-semibold text-blue-600">
+                            +{videoRewards.toLocaleString()} ETB
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="py-2">
@@ -279,6 +309,14 @@ export default function Header() {
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Commissions
+                  </Link>
+                  <Link
+                    to="/videos"
+                    className="text-gray-700 transition-colors hover:text-primary-600"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Video className="inline w-4 h-4 mr-2" />
+                    Videos
                   </Link>
                   <Link
                     to="/referral-approvals"

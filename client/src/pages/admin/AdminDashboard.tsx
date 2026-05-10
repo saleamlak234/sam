@@ -11,7 +11,8 @@ import {
   ArrowDownRight,
   Eye,
   UserCheck,
-  UserX
+  UserX,
+  Video
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -270,7 +271,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-4">
           <Link
             to="/admin/users"
             className="p-6 transition-shadow bg-white border border-gray-200 shadow-sm rounded-xl hover:shadow-md"
@@ -297,6 +298,21 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="font-semibold text-gray-900">Transactions</h3>
                 <p className="text-sm text-gray-600">Review deposits and withdrawals</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/videos"
+            className="p-6 transition-shadow bg-white border border-gray-200 shadow-sm rounded-xl hover:shadow-md"
+          >
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <Video className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Video Ads</h3>
+                <p className="text-sm text-gray-600">Manage advertisement videos</p>
               </div>
             </div>
           </Link>

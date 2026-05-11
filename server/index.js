@@ -157,14 +157,14 @@ app.get("/api/videos/active", async (req, res) => {
     const Video = require("./models/Video");
     const videos = await Video.find({ isActive: true })
       .select(
-        "title description videoUrl thumbnailUrl duration rewardAmount totalViews",
+        "_id title description videoUrl thumbnailUrl duration rewardAmount totalViews",
       )
       .sort({ createdAt: -1 })
       .lean();
 
     const mappedVideos = videos.map((video) => ({
       ...video,
-      videoUrl: buildUrl(req, video.videoUrl),
+      streamUrl: `/api/videos/stream/${video._id}`,
       thumbnailUrl: buildUrl(req, video.thumbnailUrl),
     }));
 
@@ -172,6 +172,62 @@ app.get("/api/videos/active", async (req, res) => {
   } catch (error) {
     console.error("Get active videos error:", error);
     res.status(500).json({ message: "Server error fetching videos" });
+  }
+});
+
+// Public video streaming endpoint (no auth required for playback)
+app.get("/api/videos/stream/:videoId", async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const Video = require("./models/Video");
+    const video = await Video.findById(videoId).select("videoUrl");
+
+    if (!video) {
+      return res.status(404).json({ message: "Video not found" });
+    }
+
+    const videoPath = path.join(
+      __dirname,
+      video.videoUrl.replace(/^\//, ""),
+    );
+
+    if (!fs.existsSync(videoPath)) {
+      return res.status(404).json({ message: "Video file not found" });
+    }
+
+    const fileSize = fs.statSync(videoPath).size;
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = end - start + 1;
+
+      res.writeHead(206, {
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": chunksize,
+        "Content-Type": "video/mp4",
+        "Cache-Control": "public, max-age=3600",
+        "Access-Control-Allow-Origin": "*",
+      });
+
+      fs.createReadStream(videoPath, { start, end }).pipe(res);
+    } else {
+      res.writeHead(200, {
+        "Content-Length": fileSize,
+        "Content-Type": "video/mp4",
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=3600",
+        "Access-Control-Allow-Origin": "*",
+      });
+
+      fs.createReadStream(videoPath).pipe(res);
+    }
+  } catch (error) {
+    console.error("Stream video error:", error);
+    res.status(500).json({ message: "Server error streaming video" });
   }
 });
 

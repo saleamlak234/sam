@@ -6,7 +6,8 @@ interface Video {
     _id: string;
     title: string;
     description: string;
-    videoUrl: string;
+    streamUrl: string;
+    thumbnailUrl?: string;
     duration: number;
     rewardAmount: number;
 }

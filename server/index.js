@@ -6,6 +6,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const helmet = require("helmet");
+import connectDB=require('./config/db.js')
 
 // Ensure upload directories exist
 const createUploadDirs = () => {
@@ -122,11 +123,11 @@ app.use(
 );
 
 // Database connection
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("MongoDB connection error:", err));
-
+// mongoose
+//   .connect(process.env.MONGODB_URI)
+//   .then(() => console.log("Connected to MongoDB"))
+//   .catch((err) => console.error("MongoDB connection error:", err));
+connectDB()
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/user", authMiddleware, userRoutes);
